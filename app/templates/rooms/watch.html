@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}{{ room.title }} — SyncView{% endblock %}
+
+{% block content %}
+
+<div class="room-head">
+  <div class="room-head__left">
+    <h1 class="room-title">{{ room.title }}</h1>
+
+    <div class="room-meta">
+      <span>Код: <b id="roomCode">{{ room.code }}</b></span>
+      <span>Роль: <b>{{ role }}</b></span>
+      <span>Тип: <b>{% if room.is_private %}Приватная{% else %}Публичная{% endif %}</b></span>
+      <span>Онлайн: <b id="onlineCount">0</b></span>
+    </div>
+
+    <div id="onlineUsers" class="room-online"></div>
+  </div>
+
+  <div class="room-head__right">
+    <button class="btn btn-outline" type="button" id="btnCopyCode">Копировать код</button>
+    <button class="btn btn-outline" type="button" id="btnCopyLink">Копировать ссылку</button>
+
+    {% if role == "host" %}
+      <form method="post"
+            action="{{ url_for('rooms.delete_room', code=room.code) }}"
+            onsubmit="return confirm('Удалить комнату навсегда?');"
+            style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-danger" type="submit">Удалить</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="room-body">
+  <div class="room-video">
+    <video id="video" controls preload="metadata" playsinline>
+      <source src="{{ room.video_url }}" type="video/mp4">
+      Ваш браузер не поддерживает видео.
+    </video>
+
+    {% if role != "host" and not room.is_private %}
+      <div class="room-hint">
+        В публичной комнате управлять видео может только создатель.
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="room-chat">
+    <h2>Чат</h2>
+
+    <div id="chatBox" class="chat-box"></div>
+
+    <form id="chatForm" class="chat-form">
+      <input id="chatInput" type="text" placeholder="Напиши сообщение...">
+      <button class="btn btn-primary" type="submit">Отправить</button>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+  const roomCode = "{{ room.code }}";
+  const role = "{{ role }}";
+  const canControl = (role === "host");
+
+  const video = document.getElementById("video");
+
+  const chatBox = document.getElementById("chatBox");
+  const chatForm = document.getElementById("chatForm");
+  const chatInput = document.getElementById("chatInput");
+
+  const onlineCount = document.getElementById("onlineCount");
+  const onlineUsers = document.getElementById("onlineUsers");
+
+  const btnCopyCode = document.getElementById("btnCopyCode");
+  const btnCopyLink = document.getElementById("btnCopyLink");
+
+  const socket = io();
+
+  let suppress = false;
+
+  function addLine(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch (e2) {}
+      document.body.removeChild(ta);
+      return true;
+    }
+  }
+
+  btnCopyCode.addEventListener("click", async () => {
+    await copyText(roomCode);
+    addLine("[system] Код скопирован");
+  });
+
+  btnCopyLink.addEventListener("click", async () => {
+    await copyText(window.location.href);
+    addLine("[system] Ссылка скопирована");
+  });
+
+  socket.on("connect", () => {
+    socket.emit("join_room", { room_code: roomCode });
+  });
+
+  socket.on("error_msg", (msg) => {
+    const m = (msg && msg.message) ? msg.message : "error";
+    addLine("[error] " + m);
+  });
+
+  socket.on("online_update", (data) => {
+    onlineCount.textContent = data.count ?? 0;
+    const users = Array.isArray(data.users) ? data.users : [];
+    onlineUsers.textContent = users.length ? ("Онлайн: " + users.join(", ")) : "";
+  });
+
+  socket.on("chat_history", (data) => {
+    chatBox.innerHTML = "";
+    const items = (data && Array.isArray(data.items)) ? data.items : [];
+    for (const item of items) {
+      if (item.is_system) addLine("[system] " + item.text);
+      else addLine(item.user + ": " + item.text);
+    }
+  });
+
+  chatForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = (chatInput.value || "").trim();
+    if (!text) return;
+    socket.emit("chat_send", { room_code: roomCode, text });
+    chatInput.value = "";
+  });
+
+  socket.on("chat_new", (msg) => {
+    if (msg.is_system) addLine("[system] " + msg.text);
+    else addLine(msg.user + ": " + msg.text);
+  });
+
+  function sendVideo(type) {
+    if (!canControl) return;
+    socket.emit("video_event", {
+      room_code: roomCode,
+      type,
+      t: video.currentTime,
+      paused: video.paused
+    });
+  }
+
+  if (canControl) {
+    video.addEventListener("play", () => {
+      if (suppress) return;
+      sendVideo("play");
+    });
+
+    video.addEventListener("pause", () => {
+      if (suppress) return;
+      sendVideo("pause");
+    });
+
+    video.addEventListener("seeked", () => {
+      if (suppress) return;
+      sendVideo("seek");
+    });
+
+    setInterval(() => {
+      if (socket.connected) sendVideo("sync");
+    }, 2000);
+  }
+
+  socket.on("video_update", async (msg) => {
+    suppress = true;
+    try {
+      const t = typeof msg.t === "number" ? msg.t : null;
+
+      if (msg.type === "seek" && t !== null) {
+        video.currentTime = t;
+      }
+
+      if (msg.type === "play") {
+        if (t !== null) video.currentTime = t;
+        try { await video.play(); } catch (e) {}
+      }
+
+      if (msg.type === "pause") {
+        if (t !== null) video.currentTime = t;
+        video.pause();
+      }
+
+      if (msg.type === "sync") {
+        if (t !== null) {
+          const diff = Math.abs(video.currentTime - t);
+          if (diff > 0.35) video.currentTime = t;
+        }
+        if (typeof msg.paused === "boolean") {
+          if (msg.paused) video.pause();
+          else { try { await video.play(); } catch (e) {} }
+        }
+      }
+    } finally {
+      setTimeout(() => suppress = false, 80);
+    }
+  });
+</script>
+
+{% endblock %}

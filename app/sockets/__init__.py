@@ -1,0 +1,1 @@
+from .room_events import register_socket_handlers

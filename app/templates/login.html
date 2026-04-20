@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Вход — SyncView{% endblock %}
+{% block content %}
+<h1>Вход</h1>
+
+<form method="post">
+  {{ form.hidden_tag() }}
+
+  <div class="field">
+    {{ form.user_name.label }}<br>
+    {{ form.user_name(size=32) }}
+  </div>
+
+  <div class="field">
+    {{ form.password.label }}<br>
+    {{ form.password(size=32) }}
+  </div>
+
+  {{ form.submit() }}
+</form>
+{% endblock %}

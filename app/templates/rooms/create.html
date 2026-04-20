@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Создать комнату — SyncView{% endblock %}
+
+{% block content %}
+<h1>Создать комнату</h1>
+
+<form method="post">
+  {{ form.hidden_tag() }}
+
+  <div class="field">
+    {{ form.title.label }}<br>
+    {{ form.title() }}
+    {% if form.title.errors %}
+      <div class="form-error">{{ form.title.errors[0] }}</div>
+    {% endif %}
+  </div>
+
+  <div class="field">
+    {{ form.video_url.label }}<br>
+    {{ form.video_url() }}
+    {% if form.video_url.errors %}
+      <div class="form-error">{{ form.video_url.errors[0] }}</div>
+    {% endif %}
+  </div>
+
+  <div class="field">
+    <label style="display:flex; gap:8px; align-items:center;">
+      {{ form.is_private() }}
+      <span>{{ form.is_private.label.text }}</span>
+    </label>
+    {% if form.is_private.errors %}
+      <div class="form-error">{{ form.is_private.errors[0] }}</div>
+    {% endif %}
+    <div style="color:#666; margin-top:6px;">
+      Приватная — заход по коду. Публичная — видна в общем списке.
+    </div>
+  </div>
+
+  {{ form.submit(class_="btn btn-primary") }}
+</form>
+{% endblock %}

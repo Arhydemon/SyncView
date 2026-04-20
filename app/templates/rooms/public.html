@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Публичные комнаты — SyncView{% endblock %}
+
+{% block content %}
+<h1>Публичные комнаты</h1>
+
+{% if rooms %}
+  <div class="card-list">
+    {% for room in rooms %}
+      <div class="card">
+        <div class="card-title">{{ room.title }}</div>
+        <div class="muted">Код: <b>{{ room.code }}</b></div>
+        <div style="margin-top:10px;">
+          <a class="btn btn-primary" href="{{ url_for('rooms.watch_room', code=room.code) }}">Открыть</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="muted">Публичных комнат пока нет.</p>
+{% endif %}
+
+{% endblock %}

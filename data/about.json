@@ -1,0 +1,6 @@
+{
+  "project": "SyncView",
+  "authors": ["Макар Алексеев"],
+  "goal": "Совместный просмотр видео в реальном времени бесплатно",
+  "stack": ["Python", "Flask", "Flask-SQLAlchemy", "Flask-SocketIO", "HTML5", "CSS", "SQLite"]
+}

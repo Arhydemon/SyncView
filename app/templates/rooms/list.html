@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Комнаты — SyncView{% endblock %}
+
+{% block content %}
+<h1>Мои комнаты</h1>
+
+<div style="margin:12px 0; display:flex; gap:10px; flex-wrap:wrap;">
+  <a class="btn btn-primary" href="{{ url_for('rooms.create_room') }}">Создать комнату</a>
+  <a class="btn btn-outline" href="{{ url_for('rooms.join_room') }}">Войти по коду</a>
+  <a class="btn btn-outline" href="{{ url_for('rooms.public_rooms') }}">Публичные</a>
+</div>
+
+{% if rooms %}
+  <div class="rooms-list">
+    {% for room in rooms %}
+      <div class="room-row">
+        <div class="room-row__main">
+          <div class="room-row__title">
+            <a href="{{ url_for('rooms.watch_room', code=room.code) }}">{{ room.title }}</a>
+          </div>
+          <div class="room-row__meta">
+            Код: <b>{{ room.code }}</b>
+            • {% if room.is_private %}Приватная{% else %}Публичная{% endif %}
+            {% if room.owner_id == current_user.id %} • <b>Вы создатель</b>{% endif %}
+          </div>
+        </div>
+
+        <div class="room-row__actions">
+          <a class="btn btn-outline" href="{{ url_for('rooms.watch_room', code=room.code) }}">Открыть</a>
+
+          {% if room.owner_id == current_user.id %}
+            <form method="post"
+                  action="{{ url_for('rooms.delete_room', code=room.code) }}"
+                  onsubmit="return confirm('Удалить комнату навсегда?');"
+                  style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-danger" type="submit">Удалить</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="muted">Пока нет комнат. Создай первую</p>
+{% endif %}
+{% endblock %}
