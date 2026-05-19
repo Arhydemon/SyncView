@@ -59,11 +59,12 @@
   </div>
 </div>
 
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/socket.io.min.js') }}"></script>
 <script>
   const roomCode = "{{ room.code }}";
   const role = "{{ role }}";
-  const canControl = (role === "host");
+  const isPrivateRoom = {{ "true" if room.is_private else "false" }};
+  const canControl = isPrivateRoom || role === "host";
 
   const video = document.getElementById("video");
 

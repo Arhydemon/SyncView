@@ -64,9 +64,6 @@ if exist "requirements.txt" (
   venv\Scripts\python.exe -m pip install flask flask_sqlalchemy flask_login flask_wtf flask_socketio
 )
 
-REM 
-venv\Scripts\python.exe -m pip uninstall -y eventlet >nul 2>nul
-
 echo.
 echo [INFO] Starting server...
 echo ------------------------------------------

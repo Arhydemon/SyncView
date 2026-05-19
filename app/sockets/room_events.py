@@ -86,6 +86,7 @@ def register_socket_handlers():
             "chat_new",
             {"user": current_user.user_name, "text": sys_text, "is_system": True},
             room=code,
+            include_self=False,
         )
 
         _emit_online(code)
